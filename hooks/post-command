@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=hooks/lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+# shellcheck source=hooks/lib/templates.sh
+source "${SCRIPT_DIR}/lib/templates.sh"
+# shellcheck source=hooks/lib/git.sh
+source "${SCRIPT_DIR}/lib/git.sh"
+# shellcheck source=hooks/lib/sync.sh
+source "${SCRIPT_DIR}/lib/sync.sh"
+# shellcheck source=hooks/lib/pr.sh
+source "${SCRIPT_DIR}/lib/pr.sh"
+# shellcheck source=hooks/lib/slack-utils.sh
+source "${SCRIPT_DIR}/lib/slack-utils.sh"
+
+run_source_commands() {
+  run_indexed_commands "${PLUGIN_PREFIX}RUN" "$SOURCE_WORKSPACE" "source"
+  run_indexed_commands "${PLUGIN_PREFIX}SOURCE_RUN" "$SOURCE_WORKSPACE" "source"
+}
+
+run_target_commands() {
+  run_indexed_commands "${PLUGIN_PREFIX}TARGET_RUN" "$TARGET_WORKDIR" "target"
+}
+
+ensure_actionable_configuration() {
+  local sync_count
+  local target_command_count
+
+  sync_count="$(list_entry_indexes "${PLUGIN_PREFIX}SYNC" | wc -l | tr -d ' ')"
+  target_command_count="$(list_scalar_indexes "${PLUGIN_PREFIX}TARGET_RUN" | wc -l | tr -d ' ')"
+
+  if [[ "$sync_count" -eq 0 && "$target_command_count" -eq 0 ]]; then
+    warn "No sync entries or target-run commands configured; plugin may be a no-op"
+  fi
+}
+
+handle_no_changes() {
+  local fail_on_no_changes="${BUILDKITE_PLUGIN_GIT_FAIL_ON_NO_CHANGES:-false}"
+  local notify="${BUILDKITE_PLUGIN_GIT_SLACK_NOTIFY_ON_NO_CHANGES:-false}"
+
+  log "No staged changes detected"
+
+  if is_true "$notify"; then
+    send_slack_notification
+  fi
+
+  if is_true "$fail_on_no_changes"; then
+    fail "No changes detected"
+  fi
+}
+
+apply_defaults
+enable_debug_if_needed
+
+if ! is_true "${BUILDKITE_PLUGIN_GIT_ENABLED:-true}"; then
+  log "Plugin disabled"
+  exit 0
+fi
+
+case "${BUILDKITE_PLUGIN_GIT_EXECUTE_PHASE:-post-command}" in
+  command|post-command) ;;
+  *) fail "execute-phase must be 'command' or 'post-command'" ;;
+esac
+
+if [[ "${BUILDKITE_PLUGIN_GIT_EXECUTE_PHASE:-post-command}" != "post-command" ]]; then
+  log "Skipping phase post-command; execute-phase is ${BUILDKITE_PLUGIN_GIT_EXECUTE_PHASE:-post-command}"
+  exit 0
+fi
+
+if [[ "${BUILDKITE_COMMAND_EXIT_STATUS:-0}" != "0" ]] && is_true "${BUILDKITE_PLUGIN_GIT_SKIP_ON_COMMAND_FAILURE:-true}"; then
+  log "Skipping because step command failed"
+  exit 0
+fi
+
+if [[ -z "${BUILDKITE_PLUGIN_GIT_REPOSITORY:-}" ]]; then
+  fail "repository is required"
+fi
+
+export SOURCE_WORKSPACE="${BUILDKITE_BUILD_CHECKOUT_PATH:-$PWD}"
+export SOURCE_DIRECTORY=""
+if [[ -n "${BUILDKITE_PLUGIN_GIT_SOURCE_DIRECTORY:-}" ]]; then
+  SOURCE_DIRECTORY="$(resolve_workspace_path "${BUILDKITE_PLUGIN_GIT_SOURCE_DIRECTORY}")"
+fi
+
+export TARGET_REPOSITORY="${BUILDKITE_PLUGIN_GIT_REPOSITORY}"
+TARGET_REPOSITORY_SLUG="$(parse_repo_slug "$TARGET_REPOSITORY")"
+export TARGET_REPOSITORY_SLUG
+export CLEANUP_WORKDIR="${BUILDKITE_PLUGIN_GIT_CLEANUP:-true}"
+
+init_target_branch
+ensure_actionable_configuration
+
+download_configured_artifacts
+
+create_temp_workspace
+trap cleanup_workspace EXIT
+
+run_source_commands
+
+clone_and_checkout
+
+sync_entries
+run_target_commands
+stage_changes
+
+if git diff --cached --quiet; then
+  export GIT_AUTOMATION_CHANGED_FILES=""
+  export GIT_AUTOMATION_CHANGE_SUMMARY=""
+  handle_no_changes
+  exit 0
+fi
+
+collect_change_summary
+
+commit_changes
+push_changes
+create_or_update_pr
+comment_on_source_pr_if_configured
+send_slack_notification
+
+log "Automation complete"

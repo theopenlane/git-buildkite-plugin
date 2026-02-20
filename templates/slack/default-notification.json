@@ -1,0 +1,3 @@
+{
+  "text": "Buildkite automation update for {{TARGET_REPO}} on branch {{TARGET_BRANCH}}. PR: {{TARGET_PR_URL}}"
+}

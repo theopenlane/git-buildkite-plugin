@@ -1,0 +1,219 @@
+name: Git Automation
+description: Sync files across repositories, commit/push changes, open PRs, and send Slack notifications.
+author: https://github.com/theopenlane
+requirements:
+  - bash
+  - git
+  - sed
+  - gh
+  - curl
+  - yq
+configuration:
+  properties:
+    enabled:
+      type: boolean
+    debug:
+      type: boolean
+    execute-phase:
+      type: string
+      enum:
+        - command
+        - post-command
+    skip-on-command-failure:
+      type: boolean
+    cleanup:
+      type: boolean
+    preset:
+      type: string
+      enum:
+        - custom
+        - helm-sync
+    chart-name:
+      type: string
+    source-root:
+      type: string
+    target-root:
+      type: string
+    base-merge-target-path:
+      type: string
+    base-merge-source-path:
+      type: string
+    source-directory:
+      type: string
+    run:
+      type: array
+      items:
+        type: string
+    source-run:
+      type: array
+      items:
+        type: string
+    artifact-download:
+      type: array
+      items:
+        type: object
+        properties:
+          pattern:
+            type: string
+          destination:
+            type: string
+          step:
+            type: string
+        required:
+          - pattern
+    target-run:
+      type: array
+      items:
+        type: string
+    repository:
+      type: string
+    clone-path:
+      type: string
+    remote:
+      type: string
+    base-branch:
+      type: string
+    branch:
+      type: string
+    branch-prefix:
+      type: string
+    branch-suffix:
+      type: string
+    user:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+    auth:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum:
+            - ssh
+            - https-token
+        token-env:
+          type: string
+        token-user:
+          type: string
+    sync:
+      type: array
+      items:
+        type: object
+        properties:
+          from:
+            type: string
+          to:
+            type: string
+          type:
+            type: string
+            enum:
+              - auto
+              - file
+              - dir
+              - merge-yaml
+          merge-target-path:
+            type: string
+          merge-target-suffix:
+            type: string
+          merge-source-path:
+            type: string
+          merge-source-env:
+            type: string
+          merge-delete-paths:
+            type: array
+            items:
+              type: string
+          delete:
+            type: boolean
+          required:
+            type: boolean
+    add:
+      type: array
+      items:
+        type: string
+    commit-message:
+      type: string
+    commit-signoff:
+      type: boolean
+    commit-gpg-sign:
+      type: boolean
+    push-force-with-lease:
+      type: boolean
+    fail-on-no-changes:
+      type: boolean
+    pr:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        repo:
+          type: string
+        base:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+        body-file:
+          type: string
+        draft:
+          type: boolean
+        update-existing:
+          type: boolean
+        labels:
+          type: array
+          items:
+            type: string
+        reviewers:
+          type: array
+          items:
+            type: string
+        assignees:
+          type: array
+          items:
+            type: string
+        comment-on-source-pr:
+          type: boolean
+        source-repo:
+          type: string
+        source-pr-number:
+          type: string
+        source-comment:
+          type: string
+        source-comment-file:
+          type: string
+        vars:
+          type: object
+          additionalProperties:
+            type: string
+      additionalProperties: true
+    slack:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        webhook-env:
+          type: string
+        template-file:
+          type: string
+        template-inline:
+          type: string
+        notify-on-no-changes:
+          type: boolean
+        fail-on-error:
+          type: boolean
+        vars:
+          type: object
+          additionalProperties:
+            type: string
+      additionalProperties: true
+    template-vars:
+      type: object
+      additionalProperties:
+        type: string
+  required:
+    - repository
+  additionalProperties: false

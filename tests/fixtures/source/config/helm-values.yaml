@@ -1,0 +1,5 @@
+openlane:
+  coreConfiguration:
+    enabled: true
+externalSecrets:
+  enabled: true
