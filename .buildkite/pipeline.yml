@@ -1,10 +1,9 @@
 steps:
   - label: ":shell: Shellcheck"
     plugins:
-      shellcheck#v1.4.0:
-        files:
-          - hooks/**
-          - scripts/**
+      docker-compose#v5.3.0:
+        run: shellcheck
+        cli-version: 2
 
   - label: ":rocket: Test"
     plugins:
@@ -14,5 +13,6 @@ steps:
 
   - label: ":sparkles: Lint"
     plugins:
-      plugin-linter#v3.3.0:
-        id: theopenlane/git
+      docker-compose#v5.3.0:
+        run: lint
+        cli-version: 2

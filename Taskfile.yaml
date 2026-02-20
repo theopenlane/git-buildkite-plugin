@@ -15,7 +15,7 @@ tasks:
   shellcheck:
     desc: run shellcheck on plugin hooks and helper scripts
     cmds:
-      - shellcheck hooks/environment hooks/pre-command hooks/command hooks/post-command hooks/lib/*.sh scripts/*
+      - docker compose run --rm shellcheck
 
   lint:
     desc: run the Buildkite plugin linter
@@ -41,8 +41,8 @@ tasks:
   ci:
     desc: run full validation suite (shellcheck + bats + plugin lint)
     cmds:
-      - task: lint
       - task: test
+      - task: lint
 
   precommit-full:
     desc: Lint the project against all files

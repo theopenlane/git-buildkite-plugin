@@ -1,4 +1,22 @@
 services:
+  shellcheck:
+    image: koalaman/shellcheck:stable
+    working_dir: /plugin
+    command:
+      - -x
+      - hooks/environment
+      - hooks/pre-command
+      - hooks/command
+      - hooks/post-command
+      - hooks/lib/common.sh
+      - hooks/lib/git.sh
+      - hooks/lib/pr.sh
+      - hooks/lib/slack-utils.sh
+      - hooks/lib/sync.sh
+      - hooks/lib/templates.sh
+      - scripts/test
+    volumes:
+      - ".:/plugin:ro"
   lint:
     image: buildkite/plugin-linter
     command: ['--id', 'theopenlane/git']
