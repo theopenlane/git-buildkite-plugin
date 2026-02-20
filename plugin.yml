@@ -23,7 +23,6 @@ configuration:
       type: boolean
     cleanup:
       type: boolean
-
     preset:
       type: string
       enum:
@@ -39,7 +38,6 @@ configuration:
       type: string
     base-merge-source-path:
       type: string
-
     source-directory:
       type: string
     run:
@@ -67,7 +65,6 @@ configuration:
       type: array
       items:
         type: string
-
     repository:
       type: string
     clone-path:
@@ -82,7 +79,6 @@ configuration:
       type: string
     branch-suffix:
       type: string
-
     user:
       type: object
       properties:
@@ -90,7 +86,6 @@ configuration:
           type: string
         email:
           type: string
-
     auth:
       type: object
       properties:
@@ -103,7 +98,6 @@ configuration:
           type: string
         token-user:
           type: string
-
     sync:
       type: array
       items:
@@ -136,12 +130,10 @@ configuration:
             type: boolean
           required:
             type: boolean
-
     add:
       type: array
       items:
         type: string
-
     commit-message:
       type: string
     commit-signoff:
@@ -152,7 +144,6 @@ configuration:
       type: boolean
     fail-on-no-changes:
       type: boolean
-
     pr:
       type: object
       properties:
@@ -199,7 +190,6 @@ configuration:
           additionalProperties:
             type: string
       additionalProperties: true
-
     slack:
       type: object
       properties:
@@ -220,12 +210,10 @@ configuration:
           additionalProperties:
             type: string
       additionalProperties: true
-
     template-vars:
       type: object
       additionalProperties:
         type: string
-
   required:
     - repository
   additionalProperties: false
