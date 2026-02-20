@@ -1,0 +1,52 @@
+version: "3"
+
+tasks:
+  default:
+    desc: list available tasks
+    silent: true
+    cmds:
+      - task --list
+
+  install:
+    desc: install packages required for working with this repo
+    cmds:
+      - brew install shellcheck
+
+  shellcheck:
+    desc: run shellcheck on plugin hooks and helper scripts
+    cmds:
+      - shellcheck hooks/environment hooks/pre-command hooks/command hooks/post-command hooks/lib/*.sh scripts/*
+
+  lint:
+    desc: run the Buildkite plugin linter
+    cmds:
+      - docker compose run --rm lint
+
+  bats:
+    desc: run BATS plugin tests (via plugin-tester image)
+    cmds:
+      - docker compose run --rm tests
+
+  tests:
+    desc: alias for bats
+    cmds:
+      - task: bats
+
+  test:
+    desc: run local test suite (shellcheck + bats)
+    cmds:
+      - task: shellcheck
+      - task: bats
+
+  ci:
+    desc: run full validation suite (shellcheck + bats + plugin lint)
+    cmds:
+      - task: lint
+      - task: test
+
+  precommit-full:
+    desc: Lint the project against all files
+    cmds:
+      - pre-commit install && pre-commit install-hooks
+      - pre-commit autoupdate
+      - pre-commit run --show-diff-on-failure --color=always --all-files

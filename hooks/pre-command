@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=hooks/lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+
+apply_defaults
+enable_debug_if_needed
+
+if ! is_true "${BUILDKITE_PLUGIN_GIT_ENABLED:-true}"; then
+  log "Plugin disabled"
+  exit 0
+fi
+
+case "${BUILDKITE_PLUGIN_GIT_EXECUTE_PHASE:-post-command}" in
+  command|post-command) ;;
+  *) fail "execute-phase must be 'command' or 'post-command'" ;;
+esac
+
+if [[ -z "${BUILDKITE_PLUGIN_GIT_REPOSITORY:-}" ]]; then
+  fail "repository is required"
+fi
+
+require_command git
+require_command sed
+
+if sync_uses_merge_yaml; then
+  require_command yq
+fi
+
+if is_true "${BUILDKITE_PLUGIN_GIT_PR_ENABLED:-true}"; then
+  require_command gh
+fi
+
+if is_true "${BUILDKITE_PLUGIN_GIT_SLACK_ENABLED:-false}"; then
+  require_command curl
+fi
+
+if [[ "${BUILDKITE_PLUGIN_GIT_AUTH_MODE:-ssh}" == "https-token" ]]; then
+  token_env="${BUILDKITE_PLUGIN_GIT_AUTH_TOKEN_ENV:-GITHUB_TOKEN}"
+  if [[ -z "${!token_env:-}" ]]; then
+    fail "auth.mode is https-token but env var ${token_env} is not set"
+  fi
+fi
+
+log "Pre-command checks passed"

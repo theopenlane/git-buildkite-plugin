@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+if command -v shellcheck >/dev/null 2>&1; then
+  echo "--- Shellcheck"
+  shellcheck hooks/** scripts/**
+fi
+
+echo "--- BATS"
+docker compose run --rm tests
+
+echo "--- Plugin Lint"
+docker compose run --rm lint
