@@ -90,22 +90,38 @@ run_hook() {
   [[ "$output" == *"Pre-command checks passed"* ]]
 }
 
-@test "fails when merge-yaml is configured and yq is missing" {
-  setup_isolated_path
+@test "installs yq and passes when merge-yaml is configured and yq is missing" {
+  setup_isolated_path curl
+  local fake_bin="$BATS_TEST_TMPDIR/bin"
 
   export BUILDKITE_PLUGIN_GIT_REPOSITORY="git@github.com:theopenlane/openlane-infra.git"
   export BUILDKITE_PLUGIN_GIT_PR_ENABLED=false
   export BUILDKITE_PLUGIN_GIT_SLACK_ENABLED=false
   export BUILDKITE_PLUGIN_GIT_SYNC_0_TYPE="merge-yaml"
+  # Direct yq install into the isolated bin so command -v yq finds it after install
+  export YQ_BIN_DIR="$fake_bin"
+
+  # curl stub writes a minimal yq script to the install destination
+  cat > "$fake_bin/curl" <<'SCRIPT'
+#!/bin/sh
+for arg; do
+  case "$arg" in --output) shift; dest="$1" ;; esac
+  shift 2>/dev/null || true
+done
+printf '#!/bin/sh\nexit 0\n' > "$dest"
+SCRIPT
+  chmod +x "$fake_bin/curl"
 
   run_hook
 
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"Required command not found: yq"* ]]
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Installing yq (latest)"* ]]
+  [[ "$output" == *"Pre-command checks passed"* ]]
 }
 
-@test "fails when helm-sync preset defaults sync entries to merge-yaml and yq is missing" {
-  setup_isolated_path
+@test "installs yq and passes when helm-sync preset defaults sync entries to merge-yaml and yq is missing" {
+  setup_isolated_path curl
+  local fake_bin="$BATS_TEST_TMPDIR/bin"
 
   export BUILDKITE_PLUGIN_GIT_REPOSITORY="git@github.com:theopenlane/openlane-infra.git"
   export BUILDKITE_PLUGIN_GIT_PR_ENABLED=false
@@ -113,11 +129,23 @@ run_hook() {
   export BUILDKITE_PLUGIN_GIT_PRESET="helm-sync"
   export BUILDKITE_PLUGIN_GIT_SYNC_0_FROM="helm-values.yaml"
   export BUILDKITE_PLUGIN_GIT_SYNC_0_TO="values.yaml"
+  export YQ_BIN_DIR="$fake_bin"
+
+  cat > "$fake_bin/curl" <<'SCRIPT'
+#!/bin/sh
+for arg; do
+  case "$arg" in --output) shift; dest="$1" ;; esac
+  shift 2>/dev/null || true
+done
+printf '#!/bin/sh\nexit 0\n' > "$dest"
+SCRIPT
+  chmod +x "$fake_bin/curl"
 
   run_hook
 
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"Required command not found: yq"* ]]
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Installing yq (latest)"* ]]
+  [[ "$output" == *"Pre-command checks passed"* ]]
 }
 
 @test "fails when PR is enabled and gh is missing" {
