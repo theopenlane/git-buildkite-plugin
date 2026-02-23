@@ -11,6 +11,8 @@ source "${SCRIPT_DIR}/lib/templates.sh"
 source "${SCRIPT_DIR}/lib/git.sh"
 # shellcheck source=hooks/lib/sync.sh
 source "${SCRIPT_DIR}/lib/sync.sh"
+# shellcheck source=hooks/lib/chart.sh
+source "${SCRIPT_DIR}/lib/chart.sh"
 # shellcheck source=hooks/lib/pr.sh
 source "${SCRIPT_DIR}/lib/pr.sh"
 # shellcheck source=hooks/lib/slack-utils.sh
@@ -32,8 +34,8 @@ ensure_actionable_configuration() {
   sync_count="$(list_entry_indexes "${PLUGIN_PREFIX}SYNC" | wc -l | tr -d ' ')"
   target_command_count="$(list_scalar_indexes "${PLUGIN_PREFIX}TARGET_RUN" | wc -l | tr -d ' ')"
 
-  if [[ "$sync_count" -eq 0 && "$target_command_count" -eq 0 ]]; then
-    warn "No sync entries or target-run commands configured; plugin may be a no-op"
+  if [[ "$sync_count" -eq 0 && "$target_command_count" -eq 0 && -z "${BUILDKITE_PLUGIN_GIT_CHART_VERSION_ENV:-}" ]] && ! is_true "${BUILDKITE_PLUGIN_GIT_CHART_DOCS:-false}"; then
+    warn "No sync entries, target-run commands, chart-version-env, or chart-docs configured; plugin may be a no-op"
   fi
 }
 
@@ -104,6 +106,8 @@ clone_and_checkout
 
 sync_entries
 run_target_commands
+update_chart_version
+generate_chart_docs
 stage_changes
 
 if git diff --cached --quiet; then

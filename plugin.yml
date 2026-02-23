@@ -30,6 +30,10 @@ configuration:
         - helm-sync
     chart-name:
       type: string
+    chart-version-env:
+      type: string
+    chart-docs:
+      type: boolean
     source-root:
       type: string
     target-root:
