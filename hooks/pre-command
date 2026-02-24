@@ -31,7 +31,7 @@ if sync_uses_merge_yaml; then
 fi
 
 if is_true "${BUILDKITE_PLUGIN_GIT_PR_ENABLED:-true}"; then
-  require_command gh
+  ensure_gh_installed
 fi
 
 if is_true "${BUILDKITE_PLUGIN_GIT_SLACK_ENABLED:-false}"; then

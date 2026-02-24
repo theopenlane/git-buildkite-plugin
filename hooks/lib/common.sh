@@ -59,6 +59,44 @@ ensure_yq_installed() {
   fi
 }
 
+# ensure_gh_installed installs the GitHub CLI if it is not already on PATH.
+# Installs to ${HOME}/.local/bin by default and adds that directory to PATH.
+# The install destination can be overridden via GH_BIN_DIR (primarily for testing).
+ensure_gh_installed() {
+  if command -v gh >/dev/null 2>&1; then
+    return 0
+  fi
+
+  require_command curl
+
+  local arch goarch bin_dir version tmpdir
+  arch="$(uname -m)"
+  case "$arch" in
+    aarch64|arm64) goarch=arm64 ;;
+    *)             goarch=amd64 ;;
+  esac
+
+  bin_dir="${GH_BIN_DIR:-${HOME}/.local/bin}"
+  mkdir -p "$bin_dir"
+
+  log "Installing gh (latest)"
+  version="$(curl --silent --location --output /dev/null --write-out '%{url_effective}' \
+    https://github.com/cli/cli/releases/latest | grep -oE '[0-9]+\.[0-9]+\.[0-9]+$')"
+
+  tmpdir="$(mktemp -d)"
+  curl --silent --location \
+    --output "${tmpdir}/gh.tar.gz" \
+    "https://github.com/cli/cli/releases/download/v${version}/gh_${version}_linux_${goarch}.tar.gz"
+  tar -xzf "${tmpdir}/gh.tar.gz" -C "$tmpdir"
+  mv "${tmpdir}/gh_${version}_linux_${goarch}/bin/gh" "${bin_dir}/gh"
+  chmod +x "${bin_dir}/gh"
+  rm -rf "$tmpdir"
+
+  if [[ ":${PATH}:" != *":${bin_dir}:"* ]]; then
+    export PATH="${bin_dir}:${PATH}"
+  fi
+}
+
 apply_defaults() {
   : "${BUILDKITE_PLUGIN_GIT_ENABLED:=true}"
   : "${BUILDKITE_PLUGIN_GIT_DEBUG:=false}"

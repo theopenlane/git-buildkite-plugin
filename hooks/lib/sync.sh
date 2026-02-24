@@ -165,7 +165,7 @@ prepare_merge_fragment() {
     if [[ -z "$merge_source_path" || "$merge_source_path" == "." ]]; then
       cp "$src" "$fragment_file"
     else
-      require_command yq
+      ensure_yq_installed
       yq e "${merge_source_path} // \"\"" "$src" > "$fragment_file"
     fi
   fi
@@ -197,7 +197,7 @@ merge_yaml_entry() {
   local work_tmp="${TARGET_WORKDIR%/}/.git-buildkite-plugin"
   local fragment_file="${work_tmp}/merge-${sync_idx}.yaml"
 
-  require_command yq
+  ensure_yq_installed
 
   if [[ -z "$merge_target_path" ]]; then
     fail "sync entry #${sync_idx} type merge-yaml requires merge-target-path"

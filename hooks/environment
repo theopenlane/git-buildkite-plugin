@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=hooks/lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+
 : "${BUILDKITE_PLUGIN_GIT_ENABLED:=true}"
 : "${BUILDKITE_PLUGIN_GIT_DEBUG:=false}"
 : "${BUILDKITE_PLUGIN_GIT_EXECUTE_PHASE:=post-command}"
@@ -47,6 +51,20 @@ export BUILDKITE_PLUGIN_GIT_PUSH_FORCE_WITH_LEASE
 
 if [[ "${BUILDKITE_PLUGIN_GIT_DEBUG}" == "true" ]]; then
   set -x
+fi
+
+# Install dependencies and export PATH so all subsequent hook phases have access.
+# Each ensure_* call is a no-op when the tool is already present.
+if is_true "${BUILDKITE_PLUGIN_GIT_ENABLED}"; then
+  if sync_uses_merge_yaml; then
+    ensure_yq_installed
+  fi
+
+  if is_true "${BUILDKITE_PLUGIN_GIT_PR_ENABLED}"; then
+    ensure_gh_installed
+  fi
+
+  export PATH
 fi
 
 echo "--- [git-automation] Environment defaults loaded"

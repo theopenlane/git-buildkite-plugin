@@ -147,8 +147,8 @@ run_hook() {
   [[ "$output" == *"Pre-command checks passed"* ]]
 }
 
-@test "fails when PR is enabled and gh is missing" {
-  setup_isolated_path
+@test "passes when PR is enabled and gh is available" {
+  setup_isolated_path gh
 
   export BUILDKITE_PLUGIN_GIT_REPOSITORY="git@github.com:theopenlane/openlane-infra.git"
   export BUILDKITE_PLUGIN_GIT_PR_ENABLED=true
@@ -157,8 +157,8 @@ run_hook() {
 
   run_hook
 
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"Required command not found: gh"* ]]
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Pre-command checks passed"* ]]
 }
 
 @test "fails when Slack is enabled and curl is missing" {
