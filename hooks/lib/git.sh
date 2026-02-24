@@ -189,7 +189,7 @@ push_changes() {
       fail "auth.mode is https-token but env var ${token_env} is not set"
     fi
 
-    git remote set-url "$REMOTE_NAME" "$(inject_token_url "$(git remote get-url "$REMOTE_NAME")" "$token_user" "$token")"
+    git remote set-url "$REMOTE_NAME" "$(inject_token_url "$TARGET_REPOSITORY" "$token_user" "$token")"
   fi
 
   if is_true "$push_force"; then
