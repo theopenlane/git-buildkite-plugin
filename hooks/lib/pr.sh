@@ -30,7 +30,7 @@ create_or_update_pr() {
     return
   fi
 
-  require_command gh
+  ensure_gh_installed
 
   if [[ -n "$pr_body_file" ]]; then
     pr_body="$(render_template_file "$(resolve_workspace_path "$pr_body_file")" "pr")"
@@ -108,7 +108,7 @@ comment_on_source_pr_if_configured() {
     return
   fi
 
-  require_command gh
+  ensure_gh_installed
 
   if [[ -z "$TARGET_PR_URL" ]]; then
     warn "source PR comment requested but no target PR URL is available"
