@@ -18,7 +18,7 @@ steps:
   - label: ":yaml: generate and sync config"
     command: task config:ci # generate local config artifacts first
     plugins:
-      - theopenlane/git#v0.1.0:
+      - theopenlane/git#v0.1.1:
           execute-phase: post-command # run after step command completes
           repository: git@github.com:theopenlane/openlane-infra.git # target repo to open PR against
           branch: "update-helm-config-${BUILDKITE_BUILD_NUMBER}" # explicit target branch
@@ -70,7 +70,7 @@ steps:
   - label: ":graphql: sync generated files to go-client"
     command: task graphql:generate # generate artifacts in source repo
     plugins:
-      - theopenlane/git#v0.1.0:
+      - theopenlane/git#v0.1.1:
           repository: git@github.com:theopenlane/go-client.git # downstream repo
           branch-prefix: sync-go-client
           source-run:
@@ -96,7 +96,7 @@ steps:
   - label: ":book: sync schemas to docs repo and regenerate"
     command: task graphql:schema:export # export schema/assets from source repo
     plugins:
-      - theopenlane/git#v0.1.0:
+      - theopenlane/git#v0.1.1:
           repository: git@github.com:theopenlane/docs.git # docs repo target
           branch-prefix: sync-docs
           sync:

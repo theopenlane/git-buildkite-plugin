@@ -27,7 +27,7 @@ require_command git
 require_command sed
 
 if sync_uses_merge_yaml; then
-  require_command yq
+  ensure_yq_installed
 fi
 
 if is_true "${BUILDKITE_PLUGIN_GIT_PR_ENABLED:-true}"; then

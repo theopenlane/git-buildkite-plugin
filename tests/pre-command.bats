@@ -90,21 +90,44 @@ run_hook() {
   [[ "$output" == *"Pre-command checks passed"* ]]
 }
 
-@test "fails when merge-yaml is configured and yq is missing" {
+@test "installs yq and passes when merge-yaml is configured and yq is missing" {
+  local fake_bin="$BATS_TEST_TMPDIR/bin"
+  mkdir -p "$fake_bin"
+
+  # Build stubs and link required commands BEFORE setup_isolated_path restricts
+  # PATH, since chmod/ln won't be available in the isolated environment.
+  # curl stub writes a minimal yq script to $YQ_BIN_DIR/yq on execution.
+  printf '#!/bin/sh\nprintf '"'"'#!/bin/sh\\nexit 0\\n'"'"' > "${YQ_BIN_DIR}/yq"\n' \
+    > "$fake_bin/curl"
+  chmod +x "$fake_bin/curl"
+  ln -sf "$(command -v chmod)" "$fake_bin/chmod"
+  ln -sf "$(command -v uname)" "$fake_bin/uname"
+
   setup_isolated_path
 
   export BUILDKITE_PLUGIN_GIT_REPOSITORY="git@github.com:theopenlane/openlane-infra.git"
   export BUILDKITE_PLUGIN_GIT_PR_ENABLED=false
   export BUILDKITE_PLUGIN_GIT_SLACK_ENABLED=false
   export BUILDKITE_PLUGIN_GIT_SYNC_0_TYPE="merge-yaml"
+  export YQ_BIN_DIR="$fake_bin"
 
   run_hook
 
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"Required command not found: yq"* ]]
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Installing yq (latest)"* ]]
+  [[ "$output" == *"Pre-command checks passed"* ]]
 }
 
-@test "fails when helm-sync preset defaults sync entries to merge-yaml and yq is missing" {
+@test "installs yq and passes when helm-sync preset defaults sync entries to merge-yaml and yq is missing" {
+  local fake_bin="$BATS_TEST_TMPDIR/bin"
+  mkdir -p "$fake_bin"
+
+  printf '#!/bin/sh\nprintf '"'"'#!/bin/sh\\nexit 0\\n'"'"' > "${YQ_BIN_DIR}/yq"\n' \
+    > "$fake_bin/curl"
+  chmod +x "$fake_bin/curl"
+  ln -sf "$(command -v chmod)" "$fake_bin/chmod"
+  ln -sf "$(command -v uname)" "$fake_bin/uname"
+
   setup_isolated_path
 
   export BUILDKITE_PLUGIN_GIT_REPOSITORY="git@github.com:theopenlane/openlane-infra.git"
@@ -113,11 +136,13 @@ run_hook() {
   export BUILDKITE_PLUGIN_GIT_PRESET="helm-sync"
   export BUILDKITE_PLUGIN_GIT_SYNC_0_FROM="helm-values.yaml"
   export BUILDKITE_PLUGIN_GIT_SYNC_0_TO="values.yaml"
+  export YQ_BIN_DIR="$fake_bin"
 
   run_hook
 
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"Required command not found: yq"* ]]
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Installing yq (latest)"* ]]
+  [[ "$output" == *"Pre-command checks passed"* ]]
 }
 
 @test "fails when PR is enabled and gh is missing" {
