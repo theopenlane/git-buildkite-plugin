@@ -30,8 +30,8 @@ require_command() {
 }
 
 # ensure_yq_installed installs yq (mikefarah/yq) if it is not already on PATH.
-# The install destination defaults to /usr/local/bin but can be overridden via
-# the YQ_BIN_DIR environment variable (primarily for testing).
+# Installs to ${HOME}/.local/bin by default and adds that directory to PATH.
+# The install destination can be overridden via YQ_BIN_DIR (primarily for testing).
 ensure_yq_installed() {
   if command -v yq >/dev/null 2>&1; then
     return 0
@@ -46,12 +46,17 @@ ensure_yq_installed() {
     *)             goarch=amd64 ;;
   esac
 
-  bin_dir="${YQ_BIN_DIR:-/usr/local/bin}"
+  bin_dir="${YQ_BIN_DIR:-${HOME}/.local/bin}"
+  mkdir -p "$bin_dir"
 
   log "Installing yq (latest)"
   curl --location --output "${bin_dir}/yq" \
     "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${goarch}"
   chmod +x "${bin_dir}/yq"
+
+  if [[ ":${PATH}:" != *":${bin_dir}:"* ]]; then
+    export PATH="${bin_dir}:${PATH}"
+  fi
 }
 
 apply_defaults() {

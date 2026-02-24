@@ -101,6 +101,7 @@ run_hook() {
     > "$fake_bin/curl"
   chmod +x "$fake_bin/curl"
   ln -sf "$(command -v chmod)" "$fake_bin/chmod"
+  ln -sf "$(command -v mkdir)" "$fake_bin/mkdir"
   ln -sf "$(command -v uname)" "$fake_bin/uname"
 
   setup_isolated_path
@@ -126,6 +127,7 @@ run_hook() {
     > "$fake_bin/curl"
   chmod +x "$fake_bin/curl"
   ln -sf "$(command -v chmod)" "$fake_bin/chmod"
+  ln -sf "$(command -v mkdir)" "$fake_bin/mkdir"
   ln -sf "$(command -v uname)" "$fake_bin/uname"
 
   setup_isolated_path
