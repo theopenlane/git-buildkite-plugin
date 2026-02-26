@@ -1,5 +1,5 @@
-## 🔗 Related Core Changes
+## Related Core Changes
 
-Config changes from core PR: {{CORE_PR_URL}}
+Config changes from: {{SOURCE_LINK}}
 
-This draft preview PR will be closed automatically when the core PR merges.
+This draft will be closed automatically when the source merges.

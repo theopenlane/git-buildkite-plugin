@@ -1,4 +1,6 @@
-## 🗑️ Closing Draft PR
+## Draft Closed
 
-Core PR #{{CORE_PR_NUMBER}} has merged.
-Closing this preview draft PR because final infrastructure PRs are generated from `main`.
+This draft PR has been superseded. Source has merged.
+
+Source: {{SOURCE_LINK}}
+Build: [Build #{{BUILD_NUMBER}}]({{BUILD_URL}})

@@ -1,8 +1,6 @@
-chore: finalize config changes after core merge
-
-Updated configuration after core PR merge.
+chore: finalize config changes after merge
 
 {{CHANGE_SUMMARY}}
 
-Build: {{BUILD_NUMBER}}
-Commit: {{SOURCE_COMMIT_SHORT}}
+Source: {{SOURCE_LINK}}
+Build: {{BUILD_URL}}

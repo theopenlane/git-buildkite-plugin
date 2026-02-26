@@ -167,6 +167,10 @@ configuration:
           type: boolean
         update-existing:
           type: boolean
+        close-drafts:
+          type: boolean
+        skip-if-draft-exists:
+          type: boolean
         labels:
           type: array
           items:

@@ -93,6 +93,7 @@ export TARGET_REPOSITORY_SLUG
 export CLEANUP_WORKDIR="${BUILDKITE_PLUGIN_GIT_CLEANUP:-true}"
 
 init_target_branch
+check_skip_existing_draft
 ensure_actionable_configuration
 
 download_configured_artifacts

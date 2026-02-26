@@ -8,6 +8,100 @@ default_pr_body() {
   render_template_file "$template_file" "pr"
 }
 
+# check_skip_existing_draft exits the hook early (exit 0) when a draft PR
+# already exists for the current source PR. This prevents duplicate PRs and
+# re-comments on the source PR when a PR build is retried.
+check_skip_existing_draft() {
+  local pr_enabled="${BUILDKITE_PLUGIN_GIT_PR_ENABLED:-true}"
+  local pr_draft="${BUILDKITE_PLUGIN_GIT_PR_DRAFT:-false}"
+  local skip_if_exists="${BUILDKITE_PLUGIN_GIT_PR_SKIP_IF_DRAFT_EXISTS:-false}"
+  local pr_repo="${BUILDKITE_PLUGIN_GIT_PR_REPO:-$TARGET_REPOSITORY_SLUG}"
+  local source_pr="${BUILDKITE_PULL_REQUEST:-}"
+  local existing_pr=""
+
+  if ! is_true "$pr_enabled" || ! is_true "$pr_draft" || ! is_true "$skip_if_exists"; then
+    return 0
+  fi
+
+  if [[ -z "$source_pr" || "$source_pr" == "false" ]]; then
+    return 0
+  fi
+
+  ensure_gh_installed
+
+  existing_pr="$(gh pr list --repo "$pr_repo" --state open --head "$TARGET_BRANCH" --json number --jq '.[0].number // empty')"
+
+  if [[ -n "$existing_pr" ]]; then
+    log "Draft PR #${existing_pr} already exists for source PR #${source_pr}; skipping"
+    exit 0
+  fi
+}
+
+close_draft_prs() {
+  local pr_repo="${BUILDKITE_PLUGIN_GIT_PR_REPO:-$TARGET_REPOSITORY_SLUG}"
+  local branch_prefix="${BUILDKITE_PLUGIN_GIT_BRANCH_PREFIX:-automation}"
+  local source_repo
+  local draft_prs=""
+  local pr_num=""
+  local branch_name=""
+  local source_pr_number=""
+  local source_pr_state=""
+  local comment=""
+  local close_template
+  local close_without_merge_template
+  local template_dir
+
+  source_repo="$(parse_repo_slug "${BUILDKITE_REPO:-}")"
+  template_dir="$(get_template_dir)"
+  close_template="${template_dir}/github/pr-close-comment.md"
+  close_without_merge_template="${template_dir}/github/pr-close-without-merge-comment.md"
+
+  ensure_gh_installed
+
+  draft_prs="$(gh pr list \
+    --repo "$pr_repo" \
+    --state open \
+    --json isDraft,number,headRefName \
+    --jq ".[] | select(.isDraft == true and (.headRefName | startswith(\"${branch_prefix}\"))) | \"\(.number):\(.headRefName)\"")"
+
+  if [[ -z "$draft_prs" ]]; then
+    log "No draft PRs found to close"
+    return
+  fi
+
+  while IFS=':' read -r pr_num branch_name; do
+    [[ -z "$pr_num" ]] && continue
+
+    source_pr_number=""
+    if [[ "$branch_name" =~ pr-([0-9]+) ]]; then
+      source_pr_number="${BASH_REMATCH[1]}"
+    fi
+
+    if [[ -n "$source_pr_number" && -n "$source_repo" ]]; then
+      source_pr_state="$(gh pr view "$source_pr_number" --repo "$source_repo" --json state --jq '.state' 2>/dev/null || echo "")"
+
+      if [[ "$source_pr_state" == "OPEN" ]]; then
+        log "Source PR #${source_pr_number} is still open; keeping draft PR #${pr_num}"
+        continue
+      fi
+
+      if [[ "$source_pr_state" == "MERGED" ]]; then
+        comment="$(BUILDKITE_PULL_REQUEST="$source_pr_number" render_template_file "$close_template" "pr")"
+      else
+        comment="$(BUILDKITE_PULL_REQUEST="$source_pr_number" render_template_file "$close_without_merge_template" "pr")"
+      fi
+    else
+      comment="$(render_template_file "$close_template" "pr")"
+    fi
+
+    gh pr comment "$pr_num" --repo "$pr_repo" --body "$comment"
+    gh pr close "$pr_num" --repo "$pr_repo"
+    gh api "repos/${pr_repo}/git/refs/heads/${branch_name}" --method DELETE 2>/dev/null \
+      || warn "Could not delete branch ${branch_name} (may already be deleted)"
+    log "Closed draft PR #${pr_num} (branch: ${branch_name})"
+  done <<< "$draft_prs"
+}
+
 create_or_update_pr() {
   local pr_enabled="${BUILDKITE_PLUGIN_GIT_PR_ENABLED:-true}"
   local pr_repo="${BUILDKITE_PLUGIN_GIT_PR_REPO:-$TARGET_REPOSITORY_SLUG}"
@@ -31,6 +125,10 @@ create_or_update_pr() {
   fi
 
   ensure_gh_installed
+
+  if is_true "${BUILDKITE_PLUGIN_GIT_PR_CLOSE_DRAFTS:-false}"; then
+    close_draft_prs
+  fi
 
   if [[ -n "$pr_body_file" ]]; then
     pr_body="$(render_template_file "$(resolve_workspace_path "$pr_body_file")" "pr")"

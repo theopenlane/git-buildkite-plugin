@@ -41,8 +41,26 @@ build_template_args() {
   local value=""
   local source_commit="${BUILDKITE_COMMIT:-}"
   local source_commit_short=""
+  local source_repo_slug=""
+  local source_pr="${BUILDKITE_PULL_REQUEST:-}"
+  local source_pr_url=""
+  local source_commit_url=""
+  local source_link=""
 
   source_commit_short="${source_commit:0:8}"
+  source_repo_slug="$(parse_repo_slug "${BUILDKITE_REPO:-}")"
+
+  if [[ -n "$source_pr" && "$source_pr" != "false" ]]; then
+    source_pr_url="https://github.com/${source_repo_slug}/pull/${source_pr}"
+    source_link="[PR #${source_pr}](${source_pr_url})"
+  fi
+
+  if [[ -n "$source_commit" ]]; then
+    source_commit_url="https://github.com/${source_repo_slug}/commit/${source_commit}"
+    if [[ -z "$source_link" ]]; then
+      source_link="[${source_commit_short}](${source_commit_url})"
+    fi
+  fi
 
   TEMPLATE_ARGS=(
     "BUILD_ID=${BUILDKITE_BUILD_ID:-}"
@@ -52,11 +70,15 @@ build_template_args() {
     "PIPELINE_SLUG=${BUILDKITE_PIPELINE_SLUG:-}"
     "BUILD_CREATOR=${BUILDKITE_BUILD_CREATOR:-}"
     "SOURCE_REPO_URL=${BUILDKITE_REPO:-}"
-    "SOURCE_REPO=$(parse_repo_slug "${BUILDKITE_REPO:-}")"
+    "SOURCE_REPO=${source_repo_slug}"
     "SOURCE_BRANCH=${BUILDKITE_BRANCH:-}"
     "SOURCE_COMMIT=${source_commit}"
     "SOURCE_COMMIT_SHORT=${source_commit_short}"
-    "SOURCE_PR_NUMBER=${BUILDKITE_PULL_REQUEST:-}"
+    "SOURCE_COMMIT_FULL=${source_commit}"
+    "SOURCE_PR_NUMBER=${source_pr}"
+    "SOURCE_PR_URL=${source_pr_url}"
+    "SOURCE_COMMIT_URL=${source_commit_url}"
+    "SOURCE_LINK=${source_link}"
     "TARGET_REPOSITORY=${TARGET_REPOSITORY:-}"
     "TARGET_REPO=${TARGET_REPOSITORY_SLUG:-}"
     "TARGET_BASE_BRANCH=${TARGET_BASE_BRANCH:-}"

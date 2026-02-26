@@ -1,10 +1,8 @@
-## 🚀 Release {{RELEASE_TAG}}
+## Release {{RELEASE_TAG}}
 
-Release update for core version {{RELEASE_TAG}}.
+Release update for {{RELEASE_TAG}}.
 
-### Changes:
 {{CHANGE_SUMMARY}}
 
-### Build:
-- #{{BUILD_NUMBER}} from `{{SOURCE_BRANCH}}`
-- [`{{SOURCE_COMMIT_SHORT}}`](https://github.com/theopenlane/core/commit/{{SOURCE_COMMIT_FULL}})
+Source: {{SOURCE_LINK}}
+Build: [Build #{{BUILD_NUMBER}}]({{BUILD_URL}})

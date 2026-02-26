@@ -1,3 +1,5 @@
-## 🗑️ Closing Draft PR
+## Draft Closed
 
-Core PR #{{CORE_PR_NUMBER}} was closed without merging.
+Source was closed without merging.
+
+Source: {{SOURCE_LINK}}

@@ -4,5 +4,5 @@ Automated release update for {{RELEASE_TAG}}.
 
 {{CHANGE_SUMMARY}}
 
-Build: {{BUILD_NUMBER}}
-Commit: {{SOURCE_COMMIT_SHORT}}
+Source: {{SOURCE_LINK}}
+Build: {{BUILD_URL}}
