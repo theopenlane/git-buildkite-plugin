@@ -266,3 +266,217 @@ SCRIPT
 
   unstub git
 }
+
+@test "closes merged draft PRs with comment and branch deletion when close-drafts is enabled" {
+  export BUILDKITE_PLUGIN_GIT_REPOSITORY="git@github.com:theopenlane/openlane-infra.git"
+  export BUILDKITE_PLUGIN_GIT_BASE_BRANCH="main"
+  export BUILDKITE_PLUGIN_GIT_BRANCH="sync-99"
+  export BUILDKITE_PLUGIN_GIT_CLONE_PATH="$BATS_TEST_TMPDIR/target-close-drafts"
+  export BUILDKITE_PLUGIN_GIT_CLEANUP=false
+  export BUILDKITE_PLUGIN_GIT_SYNC_0_FROM="output.txt"
+  export BUILDKITE_PLUGIN_GIT_SYNC_0_TO="config/output.txt"
+  export BUILDKITE_PLUGIN_GIT_PR_ENABLED=true
+  export BUILDKITE_PLUGIN_GIT_PR_REPO="theopenlane/openlane-infra"
+  export BUILDKITE_PLUGIN_GIT_PR_CLOSE_DRAFTS=true
+  export BUILDKITE_PLUGIN_GIT_BRANCH_PREFIX="automation"
+  export BUILDKITE_BUILD_NUMBER=99
+  export BUILDKITE_BUILD_URL="https://buildkite.com/theopenlane/core/builds/99"
+  export BUILDKITE_REPO="git@github.com:theopenlane/core.git"
+  export GH_CALLS_FILE="$BATS_TEST_TMPDIR/gh-close-calls.log"
+
+  fake_bin="$BATS_TEST_TMPDIR/bin-close"
+  mkdir -p "$fake_bin"
+  cat > "$fake_bin/gh" <<'SCRIPT'
+#!/bin/sh
+echo "$*" >> "$GH_CALLS_FILE"
+
+# close_draft_prs list query (isDraft in fields) - returns number:branch
+if [ "$1" = "pr" ] && [ "$2" = "list" ] && echo "$*" | grep -q "isDraft"; then
+  echo "55:automation-pr-42"
+  exit 0
+fi
+
+# existing PR check in create_or_update_pr
+if [ "$1" = "pr" ] && [ "$2" = "list" ]; then
+  exit 0
+fi
+
+# source PR state check: gh pr view 42 --repo theopenlane/core --json state --jq .state
+if [ "$1" = "pr" ] && [ "$2" = "view" ] && [ "$3" = "42" ]; then
+  echo "MERGED"
+  exit 0
+fi
+
+if [ "$1" = "pr" ] && [ "$2" = "comment" ]; then
+  echo "commented"
+  exit 0
+fi
+
+if [ "$1" = "pr" ] && [ "$2" = "close" ]; then
+  echo "closed"
+  exit 0
+fi
+
+if [ "$1" = "api" ]; then
+  echo "deleted"
+  exit 0
+fi
+
+if [ "$1" = "pr" ] && [ "$2" = "create" ]; then
+  echo "https://github.com/theopenlane/openlane-infra/pull/200"
+  exit 0
+fi
+
+if [ "$1" = "pr" ] && [ "$2" = "view" ]; then
+  echo "https://github.com/theopenlane/openlane-infra/pull/200"
+  exit 0
+fi
+
+exit 1
+SCRIPT
+  chmod +x "$fake_bin/gh"
+  export PATH="$fake_bin:$PATH"
+
+  stub git \
+    "clone \"$BUILDKITE_PLUGIN_GIT_REPOSITORY\" \"$BUILDKITE_PLUGIN_GIT_CLONE_PATH\" : mkdir -p '$BUILDKITE_PLUGIN_GIT_CLONE_PATH'; echo clone" \
+    "ls-remote --exit-code --heads origin sync-99 : exit 2" \
+    "fetch origin main : echo fetch" \
+    "show-ref --verify --quiet refs/remotes/origin/main : exit 1" \
+    "show-ref --verify --quiet refs/heads/main : exit 1" \
+    "checkout -b sync-99 : echo checkout" \
+    "add -A config/output.txt : echo add-sync" \
+    "add -A . : echo add-all" \
+    "diff --cached --quiet : exit 1" \
+    "diff --cached --name-only : echo config/output.txt" \
+    "commit -m \"chore: automated update from Buildkite build #99\" : echo commit" \
+    "push origin sync-99 : echo push"
+
+  run "$HOOK"
+
+  assert_success
+  assert_output --partial "Closed draft PR #55 (branch: automation-pr-42)"
+  assert_output --partial "Created PR: https://github.com/theopenlane/openlane-infra/pull/200"
+  grep -q "pr comment 55 --repo theopenlane/openlane-infra" "$GH_CALLS_FILE"
+  grep -q "pr close 55 --repo theopenlane/openlane-infra" "$GH_CALLS_FILE"
+  grep -q "api repos/theopenlane/openlane-infra/git/refs/heads/automation-pr-42" "$GH_CALLS_FILE"
+
+  unstub git
+}
+
+@test "keeps draft PR open when source PR is still open" {
+  export BUILDKITE_PLUGIN_GIT_REPOSITORY="git@github.com:theopenlane/openlane-infra.git"
+  export BUILDKITE_PLUGIN_GIT_BASE_BRANCH="main"
+  export BUILDKITE_PLUGIN_GIT_BRANCH="sync-99"
+  export BUILDKITE_PLUGIN_GIT_CLONE_PATH="$BATS_TEST_TMPDIR/target-keep-draft"
+  export BUILDKITE_PLUGIN_GIT_CLEANUP=false
+  export BUILDKITE_PLUGIN_GIT_SYNC_0_FROM="output.txt"
+  export BUILDKITE_PLUGIN_GIT_SYNC_0_TO="config/output.txt"
+  export BUILDKITE_PLUGIN_GIT_PR_ENABLED=true
+  export BUILDKITE_PLUGIN_GIT_PR_REPO="theopenlane/openlane-infra"
+  export BUILDKITE_PLUGIN_GIT_PR_CLOSE_DRAFTS=true
+  export BUILDKITE_PLUGIN_GIT_BRANCH_PREFIX="automation"
+  export BUILDKITE_BUILD_NUMBER=99
+  export BUILDKITE_REPO="git@github.com:theopenlane/core.git"
+  export GH_CALLS_FILE="$BATS_TEST_TMPDIR/gh-keep-calls.log"
+
+  fake_bin="$BATS_TEST_TMPDIR/bin-keep"
+  mkdir -p "$fake_bin"
+  cat > "$fake_bin/gh" <<'SCRIPT'
+#!/bin/sh
+echo "$*" >> "$GH_CALLS_FILE"
+
+if [ "$1" = "pr" ] && [ "$2" = "list" ] && echo "$*" | grep -q "isDraft"; then
+  echo "77:automation-pr-88"
+  exit 0
+fi
+
+if [ "$1" = "pr" ] && [ "$2" = "list" ]; then
+  exit 0
+fi
+
+# source PR 88 is still open
+if [ "$1" = "pr" ] && [ "$2" = "view" ] && [ "$3" = "88" ]; then
+  echo "OPEN"
+  exit 0
+fi
+
+if [ "$1" = "pr" ] && [ "$2" = "create" ]; then
+  echo "https://github.com/theopenlane/openlane-infra/pull/201"
+  exit 0
+fi
+
+if [ "$1" = "pr" ] && [ "$2" = "view" ]; then
+  echo "https://github.com/theopenlane/openlane-infra/pull/201"
+  exit 0
+fi
+
+exit 1
+SCRIPT
+  chmod +x "$fake_bin/gh"
+  export PATH="$fake_bin:$PATH"
+
+  stub git \
+    "clone \"$BUILDKITE_PLUGIN_GIT_REPOSITORY\" \"$BUILDKITE_PLUGIN_GIT_CLONE_PATH\" : mkdir -p '$BUILDKITE_PLUGIN_GIT_CLONE_PATH'; echo clone" \
+    "ls-remote --exit-code --heads origin sync-99 : exit 2" \
+    "fetch origin main : echo fetch" \
+    "show-ref --verify --quiet refs/remotes/origin/main : exit 1" \
+    "show-ref --verify --quiet refs/heads/main : exit 1" \
+    "checkout -b sync-99 : echo checkout" \
+    "add -A config/output.txt : echo add-sync" \
+    "add -A . : echo add-all" \
+    "diff --cached --quiet : exit 1" \
+    "diff --cached --name-only : echo config/output.txt" \
+    "commit -m \"chore: automated update from Buildkite build #99\" : echo commit" \
+    "push origin sync-99 : echo push"
+
+  run "$HOOK"
+
+  assert_success
+  assert_output --partial "Source PR #88 is still open; keeping draft PR #77"
+  ! grep -q "pr close" "$GH_CALLS_FILE"
+
+  unstub git
+}
+
+@test "skips entire workflow when draft PR already exists for source PR" {
+  export BUILDKITE_PLUGIN_GIT_REPOSITORY="git@github.com:theopenlane/openlane-infra.git"
+  export BUILDKITE_PLUGIN_GIT_BASE_BRANCH="main"
+  export BUILDKITE_PLUGIN_GIT_CLONE_PATH="$BATS_TEST_TMPDIR/target-skip-draft"
+  export BUILDKITE_PLUGIN_GIT_CLEANUP=false
+  export BUILDKITE_PLUGIN_GIT_SYNC_0_FROM="output.txt"
+  export BUILDKITE_PLUGIN_GIT_SYNC_0_TO="config/output.txt"
+  export BUILDKITE_PLUGIN_GIT_PR_ENABLED=true
+  export BUILDKITE_PLUGIN_GIT_PR_REPO="theopenlane/openlane-infra"
+  export BUILDKITE_PLUGIN_GIT_PR_DRAFT=true
+  export BUILDKITE_PLUGIN_GIT_PR_SKIP_IF_DRAFT_EXISTS=true
+  export BUILDKITE_PULL_REQUEST="55"
+  export BUILDKITE_BRANCH=feature-skip-test
+  export BUILDKITE_BUILD_NUMBER=99
+  export GH_CALLS_FILE="$BATS_TEST_TMPDIR/gh-skip-calls.log"
+
+  fake_bin="$BATS_TEST_TMPDIR/bin-skip"
+  mkdir -p "$fake_bin"
+  cat > "$fake_bin/gh" <<'SCRIPT'
+#!/bin/sh
+echo "$*" >> "$GH_CALLS_FILE"
+
+# check_skip_existing_draft: finds existing PR for automation-pr-55
+if [ "$1" = "pr" ] && [ "$2" = "list" ]; then
+  echo "99"
+  exit 0
+fi
+
+exit 1
+SCRIPT
+  chmod +x "$fake_bin/gh"
+  export PATH="$fake_bin:$PATH"
+
+  run "$HOOK"
+
+  assert_success
+  assert_output --partial "Draft PR #99 already exists for source PR #55; skipping"
+  # git clone must not have been called
+  ! grep -q "clone" "$GH_CALLS_FILE"
+
+  unstub git 2>/dev/null || true
+}

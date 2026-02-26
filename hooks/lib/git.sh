@@ -10,6 +10,8 @@ init_target_branch() {
   local prefix_setting="${PLUGIN_PREFIX}BRANCH_PREFIX"
   local suffix_setting="${PLUGIN_PREFIX}BRANCH_SUFFIX"
   local remote_branch=""
+  local source_pr="${BUILDKITE_PULL_REQUEST:-}"
+  local default_suffix=""
 
   TARGET_BASE_BRANCH="${BUILDKITE_PLUGIN_GIT_BASE_BRANCH:-main}"
 
@@ -18,8 +20,14 @@ init_target_branch() {
     return
   fi
 
-  remote_branch="$(sanitize_branch_component "${BUILDKITE_BRANCH:-source}")"
-  TARGET_BRANCH="$(sanitize_branch_component "${!prefix_setting:-automation}-${!suffix_setting:-${remote_branch}-${BUILDKITE_BUILD_NUMBER:-local}}")"
+  if [[ -n "$source_pr" && "$source_pr" != "false" ]]; then
+    default_suffix="pr-${source_pr}"
+  else
+    remote_branch="$(sanitize_branch_component "${BUILDKITE_BRANCH:-source}")"
+    default_suffix="${remote_branch}-${BUILDKITE_BUILD_NUMBER:-local}"
+  fi
+
+  TARGET_BRANCH="$(sanitize_branch_component "${!prefix_setting:-automation}-${!suffix_setting:-${default_suffix}}")"
 
   if [[ -z "$TARGET_BRANCH" ]]; then
     TARGET_BRANCH="automation-${BUILDKITE_BUILD_NUMBER:-local}"
